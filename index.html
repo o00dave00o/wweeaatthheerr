@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>16-Day Regional Weather Ensemble</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 6px;
+    }
+
+    p.subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .controls {
+      background: var(--card-bg);
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .radius-slider-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .radius-slider-group label {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .radius-slider-group input[type="range"] {
+      width: 130px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .radius-val {
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 60px;
+    }
+
+    .selector-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    #map {
+      height: 380px;
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      z-index: 1;
+      cursor: crosshair;
+    }
+
+    .location-info {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.95rem;
+      width: 100%;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .progress-container {
+      display: none;
+      width: 100%;
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 12px;
+      background: linear-gradient(90deg, var(--accent), #818cf8);
+      transition: width 0.2s ease-in-out;
+    }
+
+    .progress-label {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 4px 0 6px 0;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .date-cell {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .temp-min {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    .temp-low-max {
+      color: #fb923c;
+      font-weight: 600;
+    }
+
+    .spread-cell {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .error-msg {
+      display: none;
+      background: #7f1d1d;
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>16-Day Regional Weather Ensemble</h1>
+      <p class="subtitle">Showing absolute minimums and lowest daytime highs across 5 global models and regional points</p>
+    </header>
+
+    <div class="controls">
+      <!-- Radius Slider -->
+      <div class="radius-slider-group">
+        <label for="radius-slider">Radius Scale:</label>
+        <input type="range" id="radius-slider" min="5" max="100" step="5" value="25" />
+        <span class="radius-val" id="radius-val-text">25 Miles</span>
+      </div>
+
+      <!-- Forecast Horizon Selector -->
+      <div class="selector-group">
+        <label for="days-range">Horizon:</label>
+        <select id="days-range">
+          <option value="7">7 Days</option>
+          <option value="14">14 Days</option>
+          <option value="16" selected>16 Days (Extended)</option>
+        </select>
+      </div>
+
+      <div class="location-info" id="location-text">Click map to sample regional data</div>
+    </div>
+
+    <!-- Map Element -->
+    <div id="map"></div>
+
+    <div id="error" class="error-msg"></div>
+
+    <!-- Progress Bar -->
+    <div id="progress-container" class="progress-container">
+      <div id="progress-bar" class="progress-bar"></div>
+      <div id="progress-label" class="progress-label">Fetching regional grid... 0%</div>
+    </div>
+
+    <!-- 16-Day Overview Table -->
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Abs. Minimum (°C)</th>
+            <th>Lowest Maximum (°C)</th>
+            <th>Max Temp Range across Models</th>
+            <th>Peak Wind (km/h)</th>
+            <th>Avg Rain (mm)</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--muted);">
+              Click anywhere on the map to query regional weather data.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const MAPTILER_KEY = '34n9jGkwJzIwjW6KfzX3';
+    const SOURCES = ['ecmwf_ifs025', 'gfs_seamless', 'icon_seamless', 'ukmo_seamless', 'meteofrance_seamless'];
+
+    // Default fallback coordinates (UK center)
+    const DEFAULT_LAT = 54.5;
+    const DEFAULT_LNG = -3.5;
+    const DEFAULT_ZOOM = 8;
+    const DEFAULT_RADIUS = 25;
+
+    let map, centerMarker, areaCircle;
+    let gridDots = [];
+    let currentLat, currentLng, currentZoom;
+    let isFetching = false;
+
+    const radiusSlider = document.getElementById('radius-slider');
+    const radiusValText = document.getElementById('radius-val-text');
+    const daysRangeSelect = document.getElementById('days-range');
+    const locationText = document.getElementById('location-text');
+    const tableBody = document.getElementById('table-body');
+    const errorDiv = document.getElementById('error');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressLabel = document.getElementById('progress-label');
+
+    // Load saved settings from localStorage on startup
+    function loadSavedState() {
+      const savedLat = localStorage.getItem('weather_lat');
+      const savedLng = localStorage.getItem('weather_lng');
+      const savedZoom = localStorage.getItem('weather_zoom');
+      const savedRadius = localStorage.getItem('weather_radius');
+
+      currentLat = savedLat ? parseFloat(savedLat) : DEFAULT_LAT;
+      currentLng = savedLng ? parseFloat(savedLng) : DEFAULT_LNG;
+      currentZoom = savedZoom ? parseInt(savedZoom, 10) : DEFAULT_ZOOM;
+
+      if (savedRadius) {
+        radiusSlider.value = savedRadius;
+        radiusValText.innerText = `${savedRadius} Miles`;
+      } else {
+        radiusSlider.value = DEFAULT_RADIUS;
+        radiusValText.innerText = `${DEFAULT_RADIUS} Miles`;
+      }
+    }
+
+    // Save current settings to localStorage
+    function saveCurrentState() {
+      localStorage.setItem('weather_lat', currentLat);
+      localStorage.setItem('weather_lng', currentLng);
+      localStorage.setItem('weather_zoom', map.getZoom());
+      localStorage.setItem('weather_radius', radiusSlider.value);
+    }
+
+    function initMap() {
+      loadSavedState();
+
+      map = L.map('map').setView([currentLat, currentLng], currentZoom);
+
+      L.tileLayer(`https://api.maptiler.com/maps/dataviz-dark/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
+        attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> &copy; OpenStreetMap',
+        maxZoom: 18
+      }).addTo(map);
+
+      // Save zoom level whenever user zooms in/out
+      map.on('zoomend', () => {
+        localStorage.setItem('weather_zoom', map.getZoom());
+      });
+
+      map.on('click', (e) => {
+        currentLat = e.latlng.lat;
+        currentLng = e.latlng.lng;
+        saveCurrentState();
+        setMapPointAndFetch();
+      });
+
+      radiusSlider.addEventListener('input', (e) => {
+        const miles = e.target.value;
+        radiusValText.innerText = `${miles} Miles`;
+        updateCircleOnly(parseFloat(miles));
+      });
+
+      radiusSlider.addEventListener('change', () => {
+        saveCurrentState();
+        setMapPointAndFetch();
+      });
+
+      daysRangeSelect.addEventListener('change', () => setMapPointAndFetch());
+
+      setMapPointAndFetch();
+    }
+
+    function setMapPointAndFetch() {
+      if (centerMarker) map.removeLayer(centerMarker);
+      centerMarker = L.marker([currentLat, currentLng]).addTo(map);
+      fetchAreaWeatherData();
+    }
+
+    function updateCircleOnly(radiusMiles) {
+      if (areaCircle) {
+        areaCircle.setRadius(radiusMiles * 1609.34);
+      }
+    }
+
+    function setProgress(percent, labelText) {
+      progressContainer.style.display = 'block';
+      progressBar.style.width = percent + '%';
+      progressLabel.innerText = labelText || `Fetching regional grid... ${percent}%`;
+    }
+
+    function hideProgress() {
+      setTimeout(() => {
+        progressContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+      }, 400);
+    }
+
+    function showError(msg) {
+      if (msg) {
+        errorDiv.innerText = msg;
+        errorDiv.style.display = 'block';
+      } else {
+        errorDiv.style.display = 'none';
+      }
+    }
+
+    function clearGridVisuals() {
+      if (areaCircle) map.removeLayer(areaCircle);
+      gridDots.forEach(dot => map.removeLayer(dot));
+      gridDots = [];
+    }
+
+    async function fetchAreaWeatherData() {
+      if (isFetching) return;
+      isFetching = true;
+
+      showError('');
+      const radiusMiles = parseFloat(radiusSlider.value);
+      const forecastDays = parseInt(daysRangeSelect.value, 10);
+      setProgress(15, `Drawing ${radiusMiles}-mile radius region (${forecastDays}-day horizon)...`);
+
+      clearGridVisuals();
+
+      const radiusMeters = radiusMiles * 1609.34;
+      const latOffset = radiusMiles / 69.0; 
+      const lngOffset = radiusMiles / (69.0 * Math.cos(currentLat * Math.PI / 180));
+
+      const south = currentLat - latOffset;
+      const north = currentLat + latOffset;
+      const west = currentLng - lngOffset;
+      const east = currentLng + lngOffset;
+
+      areaCircle = L.circle([currentLat, currentLng], {
+        radius: radiusMeters,
+        color: "#38bdf8",
+        weight: 2,
+        fillColor: "#0284c7",
+        fillOpacity: 0.12
+      }).addTo(map);
+
+      const sampleLats = [];
+      const sampleLons = [];
+      const steps = 3;
+
+      for (let i = 0; i < steps; i++) {
+        const lat = south + (i * (north - south)) / (steps - 1);
+        for (let j = 0; j < steps; j++) {
+          const lon = west + (j * (east - west)) / (steps - 1);
+          sampleLats.push(lat.toFixed(4));
+          sampleLons.push(lon.toFixed(4));
+
+          const dot = L.circleMarker([lat, lon], {
+            radius: 4,
+            color: '#38bdf8',
+            fillColor: '#ffffff',
+            fillOpacity: 0.9,
+            weight: 1.5
+          }).addTo(map);
+          gridDots.push(dot);
+        }
+      }
+
+      locationText.innerText = `Sampling ${radiusMiles}-Mile Radius around [${currentLat.toFixed(3)}°, ${currentLng.toFixed(3)}°]`;
+
+      setProgress(40, `Fetching multi-model data across ${forecastDays} days...`);
+
+      const models = SOURCES.join(',');
+      const dailyVars = 'temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum';
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${sampleLats.join(',')}&longitude=${sampleLons.join(',')}&daily=${dailyVars}&forecast_days=${forecastDays}&timezone=auto&models=${models}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API request failed');
+
+        setProgress(75, 'Parsing model ensemble data...');
+        const rawData = await res.json();
+        const gridPoints = Array.isArray(rawData) ? rawData : [rawData];
+
+        setProgress(95, 'Computing daily extreme metrics...');
+        renderFullForecastTable(gridPoints);
+        setProgress(100, 'Complete');
+      } catch (err) {
+        showError('Error retrieving regional model forecasts: ' + err.message);
+      } finally {
+        hideProgress();
+        isFetching = false;
+      }
+    }
+
+    function renderFullForecastTable(gridPoints) {
+      tableBody.innerHTML = '';
+
+      if (!gridPoints || gridPoints.length === 0) return;
+
+      const dates = gridPoints[0].daily.time;
+
+      dates.forEach((dateStr, dayIndex) => {
+        let allMinTemps = [];
+        let allMaxTemps = [];
+        let allWinds = [];
+        let allRains = [];
+
+        gridPoints.forEach(point => {
+          SOURCES.forEach(source => {
+            const minArr = point.daily[`temperature_2m_min_${source}`] || point.daily[`temperature_2m_min`];
+            const maxArr = point.daily[`temperature_2m_max_${source}`] || point.daily[`temperature_2m_max`];
+            const windArr = point.daily[`wind_speed_10m_max_${source}`] || point.daily[`wind_speed_10m_max`];
+            const rainArr = point.daily[`precipitation_sum_${source}`] || point.daily[`precipitation_sum`];
+
+            if (minArr && minArr[dayIndex] !== undefined && minArr[dayIndex] !== null) allMinTemps.push(minArr[dayIndex]);
+            if (maxArr && maxArr[dayIndex] !== undefined && maxArr[dayIndex] !== null) allMaxTemps.push(maxArr[dayIndex]);
+            if (windArr && windArr[dayIndex] !== undefined && windArr[dayIndex] !== null) allWinds.push(windArr[dayIndex]);
+            if (rainArr && rainArr[dayIndex] !== undefined && rainArr[dayIndex] !== null) allRains.push(rainArr[dayIndex]);
+          });
+        });
+
+        const absMin = allMinTemps.length > 0 ? Math.min(...allMinTemps).toFixed(1) : 'N/A';
+        const lowestMax = allMaxTemps.length > 0 ? Math.min(...allMaxTemps).toFixed(1) : 'N/A';
+        const highestMax = allMaxTemps.length > 0 ? Math.max(...allMaxTemps).toFixed(1) : 'N/A';
+        const maxWind = allWinds.length > 0 ? Math.max(...allWinds).toFixed(1) : 'N/A';
+        const avgRain = allRains.length > 0 ? (allRains.reduce((a, b) => a + b, 0) / allRains.length).toFixed(1) : 'N/A';
+
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const formattedDate = dateObj.toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+
+        const dateLabel = dayIndex === 0 ? `Today (${formattedDate})` : formattedDate;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="date-cell">${dateLabel}</td>
+          <td class="temp-min">${absMin !== 'N/A' ? absMin + ' °C' : 'N/A'}</td>
+          <td class="temp-low-max">${lowestMax !== 'N/A' ? lowestMax + ' °C' : 'N/A'}</td>
+          <td class="spread-cell">${lowestMax !== 'N/A' ? lowestMax + '°C to ' + highestMax + '°C' : 'N/A'}</td>
+          <td>${maxWind !== 'N/A' ? maxWind + ' km/h' : 'N/A'}</td>
+          <td>${avgRain !== 'N/A' ? avgRain + ' mm' : 'N/A'}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    window.onload = initMap;
+  </script>
+</body>
+</html>
