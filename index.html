@@ -10,12 +10,12 @@
 
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --border: #334155;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
+      --bg: #050505;            /* Deep black canvas */
+      --card-bg: #121212;       /* Subtle off-black cards */
+      --border: #262626;        /* Subtle dark borders */
+      --text: #f5f5f5;          /* Crisp light text */
+      --muted: #a3a3a3;         /* Neutral grey labels */
+      --accent: #3b82f6;        /* Clean accent blue */
     }
 
     * {
@@ -120,7 +120,7 @@
       overflow-y: auto;
       z-index: 1000;
       margin-top: 6px;
-      box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8);
       display: none;
     }
 
@@ -205,12 +205,12 @@
 
     .date-btn:hover {
       border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.1);
+      background: rgba(59, 130, 246, 0.1);
     }
 
     .date-btn.active {
       background: var(--accent);
-      color: #0f172a;
+      color: #ffffff;
       border-color: var(--accent);
       font-weight: 700;
     }
@@ -250,8 +250,9 @@
 
     .error-msg {
       display: none;
-      background: #7f1d1d;
+      background: #450a0a;
       color: #fca5a5;
+      border: 1px solid #7f1d1d;
       padding: 12px;
       border-radius: 8px;
       margin-bottom: 16px;
@@ -298,18 +299,18 @@
   </div>
 
   <script>
-    // 10 Stable, Verified Models
+    // Distinct neon/high-contrast palette for true black dark mode
     const MODEL_CONFIG = [
-      { id: 'ecmwf_ifs025', label: 'ECMWF', color: '#38bdf8' },
-      { id: 'gfs_seamless', label: 'GFS (NOAA)', color: '#ef4444' },
-      { id: 'icon_seamless', label: 'ICON (DWD)', color: '#eab308' },
-      { id: 'ukmo_seamless', label: 'UKMO', color: '#a855f7' },
-      { id: 'meteofrance_seamless', label: 'MeteoFrance', color: '#22c55e' },
-      { id: 'gem_seamless', label: 'GEM (Canada)', color: '#f97316' },
-      { id: 'jma_seamless', label: 'JMA (Japan)', color: '#14b8a6' },
-      { id: 'dwd_icon_eu', label: 'ICON-EU', color: '#ec4899' },
-      { id: 'arpege_world', label: 'ARPEGE', color: '#8b5cf6' },
-      { id: 'gfs_global', label: 'GFS Global', color: '#06b6d4' }
+      { id: 'ecmwf_ifs025', label: 'ECMWF', color: '#60a5fa' },       // Vibrant Blue
+      { id: 'gfs_seamless', label: 'GFS (NOAA)', color: '#f87171' },   // Coral Red
+      { id: 'icon_seamless', label: 'ICON (DWD)', color: '#fbbf24' },  // Gold
+      { id: 'ukmo_seamless', label: 'UKMO', color: '#34d399' },        // Mint Green
+      { id: 'meteofrance_seamless', label: 'MeteoFrance', color: '#c084fc' }, // Violet
+      { id: 'gem_seamless', label: 'GEM (Canada)', color: '#fb923c' }, // Bright Orange
+      { id: 'jma_seamless', label: 'JMA (Japan)', color: '#22d3ee' },  // Cyan
+      { id: 'dwd_icon_eu', label: 'ICON-EU', color: '#f472b6' },       // Neon Pink
+      { id: 'arpege_world', label: 'ARPEGE', color: '#818cf8' },       // Indigo
+      { id: 'gfs_global', label: 'GFS Global', color: '#9ca3af' }      // Cool Grey
     ];
 
     let currentLat = 51.5074;
@@ -432,7 +433,6 @@
       suggestionsList.style.display = 'block';
     }
 
-    // Fetches each model individually so one model's failure won't crash the rest
     async function fetchSingleDayData() {
       if (isFetching) return;
       isFetching = true;
@@ -442,7 +442,6 @@
 
       const times = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
 
-      // Parallel fetching per model
       const fetchPromises = MODEL_CONFIG.map(async (model) => {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLng}&hourly=temperature_2m,precipitation&start_date=${selectedDate}&end_date=${selectedDate}&timezone=auto&models=${model.id}`;
         try {
@@ -543,7 +542,7 @@
             legend: {
               position: 'top',
               labels: { 
-                color: '#f8fafc', 
+                color: '#f5f5f5', 
                 boxWidth: 14, 
                 font: { size: 12, weight: '500' },
                 padding: 12,
@@ -570,18 +569,18 @@
               type: 'linear',
               position: 'bottom',
               ticks: {
-                color: '#94a3b8',
+                color: '#a3a3a3',
                 stepSize: 1,
                 font: { size: 13 },
                 callback: (val) => hours[val] || ''
               },
-              grid: { color: '#334155' },
+              grid: { color: '#262626' },
               min: 0,
               max: 23,
               title: { 
                 display: true, 
                 text: 'Hour of Day', 
-                color: '#94a3b8',
+                color: '#f5f5f5',
                 font: { size: 14, weight: 'bold' },
                 padding: { top: 10 }
               }
@@ -589,12 +588,12 @@
             yTemp: {
               type: 'linear',
               position: 'left',
-              ticks: { color: '#f8fafc', font: { size: 13 } },
-              grid: { color: '#334155' },
+              ticks: { color: '#f5f5f5', font: { size: 13 } },
+              grid: { color: '#262626' },
               title: { 
                 display: true, 
                 text: 'Temperature (°C)', 
-                color: '#f8fafc',
+                color: '#f5f5f5',
                 font: { size: 14, weight: 'bold' } 
               }
             },
@@ -602,12 +601,12 @@
               type: 'linear',
               position: 'right',
               min: 0,
-              ticks: { color: '#38bdf8', font: { size: 13 } },
+              ticks: { color: '#60a5fa', font: { size: 13 } },
               grid: { drawOnChartArea: false },
               title: { 
                 display: true, 
                 text: 'Rain (mm)', 
-                color: '#38bdf8',
+                color: '#60a5fa',
                 font: { size: 14, weight: 'bold' } 
               }
             }
